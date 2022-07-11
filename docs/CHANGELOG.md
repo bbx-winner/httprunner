@@ -1,5 +1,13 @@
 # Release History
 
+## v4.1.7 (2022-07-11)
+
+**go version**
+
+- feat: support omitting websocket url if not necessary
+- feat: support multiple websocket connections each session
+- fix: optimize websocket step initialization
+
 ## v4.1.6 (2022-07-04)
 
 **go version**
