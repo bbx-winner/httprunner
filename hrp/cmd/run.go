@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"net/http"
+
 	"github.com/spf13/cobra"
 
 	"github.com/httprunner/httprunner/v4/hrp"
@@ -37,6 +39,8 @@ var (
 	proxyUrl          string
 	saveTests         bool
 	genHTMLReport     bool
+	runTime           int
+	runInterval       int
 )
 
 func init() {
@@ -48,6 +52,8 @@ func init() {
 	runCmd.Flags().StringVarP(&proxyUrl, "proxy-url", "p", "", "set proxy url")
 	runCmd.Flags().BoolVarP(&saveTests, "save-tests", "s", false, "save tests summary")
 	runCmd.Flags().BoolVarP(&genHTMLReport, "gen-html-report", "g", false, "generate html report")
+	runCmd.Flags().IntVar(&runTime, "run-time", 0, "API test will stop until the end of specified time(s), even there are left steps")
+	runCmd.Flags().IntVar(&runInterval, "run-interval", 0, "interval(s) between each iteration")
 }
 
 func makeHRPRunner() *hrp.HRPRunner {
@@ -71,6 +77,14 @@ func makeHRPRunner() *hrp.HRPRunner {
 	}
 	if proxyUrl != "" {
 		runner.SetProxyUrl(proxyUrl)
+	}
+	if runTime > 0 {
+		// disable keep-alive to record more http stat details
+		runner.SetClientTransport(http.DefaultMaxIdleConnsPerHost, true, false)
+		runner.SetRunTime(runTime)
+	}
+	if runInterval > 0 {
+		runner.SetRunInterval(runInterval)
 	}
 	return runner
 }

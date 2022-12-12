@@ -371,9 +371,11 @@ var (
 			Name: "response_time",
 			Help: "The summary of response time",
 			Objectives: map[float64]float64{
-				0.5:  0.01,  // PCT50
-				0.9:  0.01,  // PCT90
-				0.95: 0.005, // PCT95
+				0.5:   0.01,  // PCT50
+				0.9:   0.01,  // PCT90
+				0.95:  0.005, // PCT95
+				0.99:  0.005, // PCT99
+				0.999: 0.005, // PCT99.9
 			},
 			AgeBuckets: 1,
 			MaxAge:     100000 * time.Second,

@@ -240,9 +240,9 @@ func (s *statsEntry) logResponseTime(responseTime int64) {
 	// running in distributed mode, we save the response time rounded in a dict
 	// so that 147 becomes 150, 3432 becomes 3400 and 58760 becomes 59000
 	// see also locust's stats.py
-	if responseTime < 100 {
+	if responseTime < 2000 {
 		roundedResponseTime = responseTime
-	} else if responseTime < 1000 {
+	} else if responseTime < 5000 {
 		roundedResponseTime = int64(round(float64(responseTime), .5, -1))
 	} else if responseTime < 10000 {
 		roundedResponseTime = int64(round(float64(responseTime), .5, -2))

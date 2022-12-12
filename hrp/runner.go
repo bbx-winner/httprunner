@@ -60,6 +60,8 @@ func NewRunner(t *testing.T) *HRPRunner {
 		wsDialer: &websocket.Dialer{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
+		errorChan: make(chan error),
+		stopChan:  make(chan bool),
 	}
 }
 
@@ -76,6 +78,10 @@ type HRPRunner struct {
 	http2Client   *http.Client
 	wsDialer      *websocket.Dialer
 	uiClients     map[string]*uixt.DriverExt // UI automation clients for iOS and Android, key is udid/serial
+	runTime       int
+	runInterval   int
+	errorChan     chan error
+	stopChan      chan bool
 }
 
 // SetClientTransport configures transport of http client for high concurrency load testing
@@ -173,6 +179,18 @@ func (r *HRPRunner) GenHTMLReport() *HRPRunner {
 	return r
 }
 
+func (r *HRPRunner) SetRunTime(runTime int) *HRPRunner {
+	log.Info().Int("runTime", runTime).Msg("[init] SetRunTime")
+	r.runTime = runTime
+	return r
+}
+
+func (r *HRPRunner) SetRunInterval(runInterval int) *HRPRunner {
+	log.Info().Int("runInterval", runInterval).Msg("[init] SetRunInterval")
+	r.runInterval = runInterval
+	return r
+}
+
 // Run starts to execute one or multiple testcases.
 func (r *HRPRunner) Run(testcases ...ITestCase) error {
 	log.Info().Str("hrp_version", version.VERSION).Msg("start running")
@@ -193,6 +211,7 @@ func (r *HRPRunner) Run(testcases ...ITestCase) error {
 		log.Error().Err(err).Msg("failed to load testcases")
 		return err
 	}
+	var runErr error
 
 	// quit all plugins
 	defer func() {
@@ -202,69 +221,89 @@ func (r *HRPRunner) Run(testcases ...ITestCase) error {
 			}
 			return true
 		})
+
+		// save summary
+		if r.saveTests {
+			errGetSummary := s.genSummary()
+			if errGetSummary != nil {
+				log.Error().Err(errGetSummary).Msg("[Run] get entire summary failed")
+			}
+		}
+
+		// generate HTML report
+		if r.genHTMLReport {
+			errGetReport := s.genHTMLReport()
+			if errGetReport != nil {
+				log.Error().Err(errGetReport).Msg("[Run] get html report failed")
+			}
+		}
 	}()
 
-	var runErr error
-	// run testcase one by one
-	for _, testcase := range testCases {
-		// each testcase has its own case runner
-		caseRunner, err := r.NewCaseRunner(testcase)
-		if err != nil {
-			log.Error().Err(err).Msg("[Run] init case runner failed")
-			return err
-		}
-
-		// release UI driver session
-		defer func() {
-			for _, client := range r.uiClients {
-				client.Driver.DeleteSession()
+	ticker := time.NewTicker(time.Duration(r.runInterval) * time.Second)
+	defer ticker.Stop()
+	go func() {
+		// run testcase one by one
+		for _, testcase := range testCases {
+			// each testcase has its own case runner
+			caseRunner, err := r.NewCaseRunner(testcase)
+			if err != nil {
+				log.Error().Err(err).Msg("[Run] init case runner failed")
+				r.errorChan <- err
 			}
-		}()
 
-		for it := caseRunner.parametersIterator; it.HasNext(); {
-			// case runner can run multiple times with different parameters
-			// each run has its own session runner
-			sessionRunner := caseRunner.NewSession()
-			err1 := sessionRunner.Start(it.Next())
-			if err1 != nil {
-				log.Error().Err(err1).Msg("[Run] run testcase failed")
-				runErr = err1
+			// set unlimited mode if API test run time specified
+			if r.runTime > 0 {
+				caseRunner.parametersIterator.SetUnlimitedMode()
 			}
-			caseSummary, err2 := sessionRunner.GetSummary()
-			s.appendCaseSummary(caseSummary)
-			if err2 != nil {
-				log.Error().Err(err2).Msg("[Run] get summary failed")
-				if err1 != nil {
-					runErr = errors.Wrap(err1, err2.Error())
-				} else {
-					runErr = err2
+			// release UI driver session
+			defer func() {
+				for _, client := range r.uiClients {
+					client.Driver.DeleteSession()
 				}
+			}()
+
+			for it := caseRunner.parametersIterator; it.HasNext(); {
+				// case runner can run multiple times with different parameters
+				// each run has its own session runner
+				sessionRunner := caseRunner.NewSession()
+				err1 := sessionRunner.Start(it.Next())
+				if err1 != nil {
+					log.Error().Err(err1).Msg("[Run] run testcase failed")
+					runErr = err1
+				}
+				caseSummary, err2 := sessionRunner.GetSummary()
+				s.appendCaseSummary(caseSummary)
+				if err2 != nil {
+					log.Error().Err(err2).Msg("[Run] get summary failed")
+					if err1 != nil {
+						runErr = errors.Wrap(err1, err2.Error())
+					} else {
+						runErr = err2
+					}
+				}
+
+				if runErr != nil && r.failfast {
+					r.errorChan <- runErr
+					break
+				}
+				<-ticker.C
+
 			}
-
-			if runErr != nil && r.failfast {
-				break
-			}
 		}
-	}
-	s.Time.Duration = time.Since(s.Time.StartAt).Seconds()
+		s.Time.Duration = time.Since(s.Time.StartAt).Seconds()
+		r.stopChan <- true
+	}()
 
-	// save summary
-	if r.saveTests {
-		err := s.genSummary()
-		if err != nil {
-			return err
-		}
+	timer := time.NewTimer(time.Duration(r.runTime) * time.Second)
+	defer timer.Stop()
+	select {
+	case errFromChan := <-r.errorChan:
+		return errFromChan
+	case <-r.stopChan:
+		return nil
+	case <-timer.C:
+		return nil
 	}
-
-	// generate HTML report
-	if r.genHTMLReport {
-		err := s.genHTMLReport()
-		if err != nil {
-			return err
-		}
-	}
-
-	return runErr
 }
 
 // NewCaseRunner creates a new case runner for testcase.
