@@ -239,8 +239,11 @@ func (r *HRPRunner) Run(testcases ...ITestCase) error {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Duration(r.runInterval) * time.Second)
-	defer ticker.Stop()
+	var caseTicker *time.Ticker
+	if r.runInterval > 0 {
+		caseTicker = time.NewTicker(time.Duration(r.runInterval) * time.Second)
+		defer caseTicker.Stop()
+	}
 	go func() {
 		// run testcase one by one
 		for _, testcase := range testCases {
@@ -286,22 +289,31 @@ func (r *HRPRunner) Run(testcases ...ITestCase) error {
 					r.errorChan <- runErr
 					break
 				}
-				<-ticker.C
-
+				if r.runInterval > 0 && caseTicker != nil {
+					<-caseTicker.C
+				}
 			}
 		}
 		s.Time.Duration = time.Since(s.Time.StartAt).Seconds()
 		r.stopChan <- true
 	}()
 
-	timer := time.NewTimer(time.Duration(r.runTime) * time.Second)
-	defer timer.Stop()
+	if r.runTime > 0 {
+		timer := time.NewTimer(time.Duration(r.runTime) * time.Second)
+		defer timer.Stop()
+		select {
+		case errFromChan := <-r.errorChan:
+			return errFromChan
+		case <-r.stopChan:
+			return nil
+		case <-timer.C:
+			return nil
+		}
+	}
 	select {
 	case errFromChan := <-r.errorChan:
 		return errFromChan
 	case <-r.stopChan:
-		return nil
-	case <-timer.C:
 		return nil
 	}
 }
