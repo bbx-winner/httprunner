@@ -1,6 +1,7 @@
 package boomer
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -132,6 +133,8 @@ func (s *requestStats) serializeStats() []interface{} {
 	for _, v := range s.entries {
 		if !(v.NumRequests == 0 && v.NumFailures == 0) {
 			entries = append(entries, v.getStrippedReport())
+		} else {
+			fmt.Println(v)
 		}
 	}
 	return entries

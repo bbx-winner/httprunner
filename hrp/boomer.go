@@ -424,7 +424,7 @@ func (b *HRPBoomer) convertBoomerTask(testcase *TestCase, rendezvousList []*Rend
 					// think time
 					// no record required
 				} else {
-					// request or testcase step
+					// request step
 					b.RecordSuccess(string(step.Type()), stepResult.Name, stepResult.Elapsed, stepResult.ContentSize)
 					// update extracted variables
 					for k, v := range stepResult.ExportVars {

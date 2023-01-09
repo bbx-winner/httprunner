@@ -1,0 +1,36 @@
+{
+    "config": {
+        "name": "demo without custom function plugin"
+    },
+    "teststeps": [
+        {
+            "transaction": {
+                "name": "tran1",
+                "type": "start"
+            }
+        },
+        {
+            "name": "get with params",
+            "request": {
+                "method": "GET",
+                "url": "http://10.248.153.16:8888",
+                "headers": {
+                    "User-Agent": "HttpRunnerPlus"
+                }
+            }
+        },
+        {
+            "transaction": {
+                "name": "tran1",
+                "type": "end"
+            }
+        },
+        {
+            "name": "get",
+            "request": {
+                "method": "GET",
+                "url": "http://10.248.153.16:8888/get"
+            }
+        }
+    ]
+}

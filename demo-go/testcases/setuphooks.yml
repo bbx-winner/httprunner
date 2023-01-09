@@ -1,0 +1,23 @@
+config:
+    name: "request with setup hooks"
+    variables:
+        foo1: config_bar1
+        foo2: config_bar2
+        expect_foo1: config_bar1
+        expect_foo2: config_bar2
+    headers:
+        User-Agent: ${get_user_agent()}
+    verify: False
+
+teststeps:
+-
+    name: test headers
+    request:
+        method: GET
+        url: $base_url/headers
+    setup_hooks:
+        - "${SetupHookChangeHeader($hrp_step_request)}"
+    teardown_hooks:
+        - "${TeardownSleep()}"
+    validate:
+        - eq: ["status_code", 200]

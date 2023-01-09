@@ -1,0 +1,29 @@
+{
+    "config": {
+        "name": "test douyin open api with different response time and content length",
+        "base_url": "https://open.douyin.com"
+    },
+    "teststeps": [
+        {
+            "name": "delay 2s",
+            "request": {
+                "method": "GET",
+                "url": "/test_rpc_service/pressure_test",
+                "params": {
+                    "content_length": 200
+                },
+                "headers": {
+                    "User-Agent": "HttpRunnerPlus"
+                }
+            },
+            "validate": [
+                {
+                    "check": "status_code",
+                    "assert": "equals",
+                    "expect": 200,
+                    "msg": "check status code"
+                }
+            ]
+        }
+    ]
+}

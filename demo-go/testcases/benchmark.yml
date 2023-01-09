@@ -1,0 +1,11 @@
+config:
+    name: "benchmark"
+
+teststeps:
+-
+    name: get
+    request:
+        method: GET
+        url: http://10.248.153.16:8888/get?a=1&b=2
+    validate:
+        - eq: ["status_code", 200]
