@@ -5,6 +5,7 @@
 - feat: support to reset driver (or session only) automatically when UIA2 / WDA crashed or WebDriver request failed
 - compatibility: support indicating options separately in MobileAction level
 - fix: use Override size if existed, otherwise use Physical size
+- fix: add default `regex`, `max_retry_times`, `offset` and `interval` for `swipe_to_tap_app` action
 
 ## v4.3.5 (2023-07-23)
 
