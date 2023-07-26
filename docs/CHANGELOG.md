@@ -3,6 +3,7 @@
 ## v4.3.6 (2023-07-24)
 
 - feat: support to reset driver (or session only) automatically when UIA2 / WDA crashed or WebDriver request failed
+- compatibility: support indicating options separately in MobileAction level
 
 ## v4.3.5 (2023-07-23)
 
