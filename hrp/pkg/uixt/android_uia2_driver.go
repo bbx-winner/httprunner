@@ -337,6 +337,14 @@ func (ud *uiaDriver) SendKeys(text string, options ...DataOption) (err error) {
 	newData := NewData(data, options...)
 
 	_, err = ud.tempHttpPOST(newData, "/session", ud.sessionId, "keys")
+	if err != nil {
+		// use com.android.adbkeyboard if existed
+		if ud.IsAdbKeyBoardInstalled() {
+			err = ud.SendKeysByAdbKeyBoard(text)
+		} else {
+			_, err = ud.adbClient.RunShellCommand("input", "text", text)
+		}
+	}
 	return
 }
 
